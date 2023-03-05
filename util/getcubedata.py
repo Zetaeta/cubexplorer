@@ -23,10 +23,11 @@ for cube in cubes:
     if get_json:
         response =requests.get("https://cubecobra.com/cube/api/cubeJSON/" + cube)
         print("received " + str(response))
-        cube_data = response.json()
-        q_file = open("data/cubes/" + cube + ".json", "w")
-        q_file.write(str(cube_data))
-        q_file.close()
+        if response.status_code == 200:
+            cube_data = response.text
+            q_file = open("data/cubes/" + cube + ".json", "w")
+            q_file.write(cube_data)
+            q_file.close()
         time.sleep(1)
     if get_list:
         response =requests.get("https://cubecobra.com/cube/api/cubelist/" + cube)
