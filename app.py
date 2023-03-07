@@ -4,14 +4,17 @@ from flask_cors import CORS
 from api.ApiHandler import ApiHandler
 import sqlite3
 import json
+from util import covdb
 
 DATABASE = 'data/site.db'
-    
+
+
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
+        db = g._database = covdb.connect(DATABASE)
     return db
+
 
 app = Flask(__name__, static_url_path="", static_folder="frontend/build")
 CORS(app)
@@ -24,9 +27,11 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
+
 @app.route("/", defaults={"path": ""})
 def serve(path):
     return send_from_directory(app.static_folder, "index.html")
+
 
 @app.route("/tree", methods=["POST"])
 def get_tree():
@@ -64,9 +69,27 @@ def get_tree():
         })
 
 
+@app.route("/api/cov/<uuid:card_id>")
+def get_covariances(card_id):
+    db = get_db()
+    covdb.compute_covariances(card_id, db=db)
+    top10 = covdb.get_top(10, card_id, db=db)
+    print(top10)
+    bottom10 = covdb.get_bottom(10, card_id, db=db)
+    def make_card_data(idcov):
+        id, cov = idcov
+        return {'card_name': get_card_name(idcov[0]), 'cov': idcov[1]}
+    return jsonify({'top': list(map(make_card_data, top10)), 'bottom': list(map(make_card_data, bottom10))})
+
+
 def get_card_id(card_name):
     cur = get_db().cursor()
     return cur.execute(f'SELECT oracle_id FROM Cards WHERE name = "{card_name}"').fetchone()[0]
+
+
+def get_card_name(card_id):
+    cur = get_db().cursor()
+    return cur.execute(f'SELECT name FROM Cards WHERE oracle_id = "{card_id}"').fetchone()[0]
 
 
 def get_card_by_name(card_name):
@@ -84,7 +107,7 @@ def get_cards(card_ids):
 
 
 def get_tree():
-    file = open('data/tree.json',"r")
+    file = open('data/tree.json', "r")
     tree = json.load(file)
     file.close()
     return tree
