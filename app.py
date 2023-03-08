@@ -16,6 +16,14 @@ def get_db():
     return db
 
 
+cdb = None
+def get_cdb():
+    global cdb
+    if not cdb:
+        cdb = covdb.CorrDB(get_db())
+    return cdb
+
+
 app = Flask(__name__, static_url_path="", static_folder="frontend/build")
 CORS(app)
 api = Api(app)
@@ -24,8 +32,8 @@ api = Api(app)
 @app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
+    # if db is not None:
+        # db.close()
 
 
 @app.route("/", defaults={"path": ""})
@@ -72,10 +80,11 @@ def get_tree():
 @app.route("/api/cov/<uuid:card_id>")
 def get_covariances(card_id):
     db = get_db()
-    covdb.compute_covariances(card_id, db=db)
-    top10 = covdb.get_top(10, card_id, db=db)
+    covdb = get_cdb()
+    covdb.compute_covariances(card_id)
+    top10 = covdb.get_top(10, card_id)
     print(top10)
-    bottom10 = covdb.get_bottom(10, card_id, db=db)
+    bottom10 = covdb.get_bottom(10, card_id)
     def make_card_data(idcov):
         id, cov = idcov
         return {'card_name': get_card_name(idcov[0]), 'cov': idcov[1]}
