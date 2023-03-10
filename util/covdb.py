@@ -8,17 +8,7 @@ from collections import Counter
 import redis
 import time
 from datetime import datetime
-
-
-def get_redis():
-    return redis.Redis()
-
-
-def connect(path):
-    conn = sqlite3.connect(path, detect_types=sqlite3.PARSE_DECLTYPES)
-    sqlite3.register_adapter(uuid.UUID, lambda u: u.bytes_le)
-    sqlite3.register_converter('UUID', lambda b: uuid.UUID(bytes_le=b))
-    return conn
+from util.db import connect, get_redis
 
 
 class CorrDB:
@@ -64,6 +54,7 @@ class CorrDB:
     def populate_incidence_db(self):
         db = self.db
         cur = db.cursor()
+        cur.execute('DELETE FROM Incidence')
         def is_json(filename):
             # print(filename[-4:])
             return filename[-4:] == 'json'
@@ -74,8 +65,14 @@ class CorrDB:
             cube_id = cube_data['shortID']
             for (card_id, mult) in Counter(cube_data['cardOracles']).items():
                 cur.execute('INSERT OR REPLACE INTO Incidence (cube_id, card_id, mult) VALUES (?, ?, ?)', (cube_id, uuid.UUID(card_id), mult))
-            db.commit()
             file.close()
+        cur.execute('UPDATE cards SET used=0')
+        for (card_id,) in cur.execute('SELECT DISTINCT card_id FROM incidence').fetchall():
+            print(f'using {card_id} with type {type(card_id)}')
+            # card_id = uuid.UUID(card_id)
+            cur.execute('UPDATE cards SET used=1 WHERE id=?', (card_id,))
+            print(cur.execute('SELECT id FROM cards WHERE id=?', (card_id,)).fetchone())
+        db.commit()
 
 
     def create_covdb(self):

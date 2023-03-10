@@ -1,7 +1,5 @@
 import json
 
-file = open('data/tree.txt', 'r')
-lines = file.readlines()
 
 
 def parse_line(line):
@@ -87,34 +85,41 @@ def parse_freq(string):
     return list(map(int, string.split(",")))
 
 
-data = map(parse_line, filter(lambda l: len(l) > 0 and l[0] != '\n',lines) )
-current = None
-top = None
-for entry in data:
-    if 'freq' not in entry:
-        continue
-    set = parse_freq(entry['freq'])
-    node = None
-    leaf = False
-    if 'att' not in entry:
-        leaf = True
-        node = TreeLeaf(entry['class'], set)
-    else:
-        node = TreeNode({
-            'card': entry['att'],
-            'cut': entry['cut']
-        }, set)
-    if current == None:
-        current = node
-        top = node
-    else:
-        while not current.contains(set):
-            current = current.parent
-            if current == None:
-                print('Error run out of parents')
-        node.parent = current
-        current.add_child(node)
-        if not node.leaf:
+def parse_tree():
+    file = open('data/tree.txt', 'r')
+    lines = file.readlines()
+
+    data = map(parse_line, filter(lambda l: len(l) > 0 and l[0] != '\n',lines) )
+    current = None
+    top = None
+    for entry in data:
+        if 'freq' not in entry:
+            continue
+        set = parse_freq(entry['freq'])
+        node = None
+        leaf = False
+        if 'att' not in entry:
+            leaf = True
+            node = TreeLeaf(entry['class'], set)
+        else:
+            node = TreeNode({
+                'card': entry['att'],
+                'cut': entry['cut']
+            }, set)
+        if current == None:
             current = node
-# print(json.dumps(list(data)))
-print(json.dumps(top, cls=TreeEncoder))
+            top = node
+        else:
+            while not current.contains(set):
+                current = current.parent
+                if current == None:
+                    print('Error run out of parents')
+            node.parent = current
+            current.add_child(node)
+            if not node.leaf:
+                current = node
+    # print(json.dumps(list(data)))
+    print(json.dumps(top, cls=TreeEncoder))
+
+if __name__ == "__main__":
+    parse_tree()
